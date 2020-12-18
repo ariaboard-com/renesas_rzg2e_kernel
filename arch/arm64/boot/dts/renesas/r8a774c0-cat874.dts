@@ -17,6 +17,9 @@
 	aliases {
 		serial0 = &scif2;
 		serial1 = &hscif2;
+		serial2 = &hscif3;
+		serial3 = &hscif4;
+		spi0 = &msiof0;
 	};
 
 	chosen {
@@ -62,7 +65,41 @@
 	memory@48000000 {
 		device_type = "memory";
 		/* first 128MB is reserved for secure area. */
-		reg = <0x0 0x48000000 0x0 0x78000000>;
+		reg = <0x0 0x48000000 0x0 0x3C000000>;
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		/* global autoconfigured region for contiguous allocations */
+		global_cma: linux,cma@58000000 {
+			compatible = "shared-dma-pool";
+			reusable;
+			reg = <0x00000000 0x58000000 0x0 0x10000000>;
+			linux,cma-default;
+		};
+
+		/* device specific region for contiguous allocations */
+		mmp_reserved: linux,multimedia {
+			compatible = "shared-dma-pool";
+			reusable;
+			reg = <0x00000000 0x68000000 0x0 0x08000000>;
+		};
+	};
+
+	mmngr {
+		compatible = "renesas,mmngr";
+		memory-region = <&mmp_reserved>;
+	};
+
+	mmngrbuf {
+		compatible = "renesas,mmngrbuf";
+	};
+
+	vspm_if {
+		compatible = "renesas,vspm_if";
 	};
 
 	reg_12p0v: regulator-12p0v {
@@ -77,18 +114,44 @@
 	sound: sound {
 		compatible = "simple-audio-card";
 
-		simple-audio-card,name = "CAT874 HDMI sound";
 		simple-audio-card,format = "i2s";
-		simple-audio-card,bitclock-master = <&sndcpu>;
-		simple-audio-card,frame-master = <&sndcpu>;
+		simple-audio-card,name = "rcar_sound";
 
-		sndcodec: simple-audio-card,codec {
-			sound-dai = <&tda19988>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		simple-audio-card,dai-link@0 {
+			reg = <0>;
+			format = "i2s";
+			cpu {
+				sound-dai = <&rcar_sound 0>;
+				bitclock-master;
+				frame-master;
+			};
+
+			codec {
+				sound-dai = <&tda19988>;
+			};
 		};
 
-		sndcpu: simple-audio-card,cpu {
-			sound-dai = <&rcar_sound>;
+		simple-audio-card,dai-link@1 {
+			reg = <1>;
+			format = "i2s";
+			cpu {
+				sound-dai = <&rcar_sound 1>;
+				bitclock-master;
+				frame-master;
+			};
+
+			codec {
+				sound-dai = <&pcm5102a>;
+			};
 		};
+	};
+
+	pcm5102a: pcm5102a {
+		compatible = "ti,pcm5102a";
+		#sound-dai-cells = <0>;
 	};
 
 	vcc_sdhi0: regulator-vcc-sdhi0 {
@@ -157,6 +220,7 @@
 
 &ehci0 {
 	dr_mode = "host";
+	memory-region = <&global_cma>;
 	status = "okay";
 };
 
@@ -175,6 +239,22 @@
 		compatible = "ti,wl1837-st";
 		enable-gpios = <&gpio4 6 GPIO_ACTIVE_HIGH>;
 	};
+};
+
+&hscif3 {
+	pinctrl-0 = <&hscif3_pins>;
+	pinctrl-names = "default";
+
+	uart-has-rtscts;
+	status = "okay";
+};
+
+&hscif4 {
+	pinctrl-0 = <&hscif4_pins>;
+	pinctrl-names = "default";
+
+	uart-has-rtscts;
+	status = "okay";
 };
 
 &i2c0 {
@@ -261,6 +341,7 @@
 
 &ohci0 {
 	dr_mode = "host";
+	memory-region = <&global_cma>;
 	status = "okay";
 };
 
@@ -283,6 +364,16 @@
 	hscif2_pins: hscif2 {
 		groups = "hscif2_data_a", "hscif2_ctrl_a";
 		function = "hscif2";
+	};
+
+	hscif3_pins: hscif3 {
+		groups = "hscif3_data_c", "hscif3_ctrl_c";
+		function = "hscif3";
+	};
+
+	hscif4_pins: hscif4 {
+		groups = "hscif4_data_b";
+		function = "hscif4";
 	};
 
 	i2c1_pins: i2c1 {
@@ -314,18 +405,36 @@
 	};
 
 	sound_clk_pins: sound_clk {
-		groups = "audio_clkout1_a";
+		groups = "audio_clkout1_a",
+			 "audio_clk_a", "audio_clk_b_a", "audio_clk_c_a";
 		function = "audio_clk";
 	};
 
 	sound_pins: sound {
-		groups = "ssi01239_ctrl", "ssi0_data";
+		groups = "ssi01239_ctrl", "ssi0_data",
+			 "ssi349_ctrl", "ssi3_data", "ssi4_data";
 		function = "ssi";
 	};
 
 	usb30_pins: usb30 {
 		groups = "usb30", "usb30_id";
 		function = "usb30";
+	};
+
+	pwm6_pins: pwm6 {
+		groups = "pwm6_a";
+		function = "pwm6";
+	};
+
+	tpu0_pins: tpu {
+		groups = "tpu0_to0", "tpu0_to1";
+		function = "tpu0";
+	};
+
+	msiof0_pins: spi0 {
+		groups = "msiof0_clk", "msiof0_sync",
+			 "msiof0_rxd", "msiof0_txd";
+		function = "msiof0";
 	};
 };
 
@@ -334,7 +443,7 @@
 	pinctrl-names = "default";
 
 	/* Single DAI */
-	#sound-dai-cells = <0>;
+	#sound-dai-cells = <1>;
 
 	/* audio_clkout0/1/2/3 */
 	#clock-cells = <1>;
@@ -346,7 +455,15 @@
 		dai0 {
 			playback = <&ssi0 &src0 &dvc0>;
 		};
+
+		dai1 {
+			playback = <&ssi4 &src4 &dvc1>;
+		};
 	};
+};
+
+&ssi4 {
+	shared-pin;
 };
 
 &rwdt {
@@ -415,6 +532,64 @@
 
 &xhci0 {
 	pinctrl-0 = <&usb30_pins>;
+	pinctrl-names = "default";
+	memory-region = <&global_cma>;
+
+	status = "okay";
+};
+
+&cmt0 {
+	status = "okay";
+};
+
+&cmt1 {
+	status = "okay";
+};
+
+&tmu0 {
+	status = "okay";
+};
+
+&tmu1 {
+	status = "okay";
+};
+
+&tmu2 {
+	status = "okay";
+};
+
+&tmu3 {
+	status = "okay";
+};
+
+&tmu4 {
+	status = "okay";
+};
+
+&pwm6 {
+	pinctrl-0 = <&pwm6_pins>;
+	pinctrl-names = "default";
+
+	status = "okay";
+};
+
+&vspb {
+	status = "okay";
+};
+
+&vspi0 {
+	status = "okay";
+};
+
+&tpu{
+	pinctrl-0 = <&tpu0_pins>;
+	pinctrl-names = "default";
+
+	status = "okay";
+};
+
+&msiof0 {
+	pinctrl-0 = <&msiof0_pins>;
 	pinctrl-names = "default";
 
 	status = "okay";

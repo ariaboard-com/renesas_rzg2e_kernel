@@ -55,15 +55,24 @@
 #define THCTR_PONM	BIT(6)
 #define THCTR_THSST	BIT(0)
 
+/* Fuse registers and base offsets */
+#define PTAT_BASE                      0xE6198000
+#define REG_GEN3_PTAT1         0x5C
+#define REG_GEN3_PTAT2         0x60
+#define REG_GEN3_PTAT3         0x64
+#define REG_GEN3_THSCP         0x68
+#define REG_GEN3_MAX_SIZE      (REG_GEN3_THSCP + 0x4)
+
 #define CTEMP_MASK	0xFFF
+#define GEN3_FUSE_MASK 0xFFF
+#define COR_PARA_VLD (0x3 << 14)
 
 #define MCELSIUS(temp)	((temp) * 1000)
-#define GEN3_FUSE_MASK	0xFFF
 
 #define TSC_MAX_NUM	3
 
 /* default THCODE values if FUSEs are missing */
-static const int thcode[TSC_MAX_NUM][3] = {
+static int thcode[TSC_MAX_NUM][3] = {
 	{ 3397, 2800, 2221 },
 	{ 3393, 2795, 2216 },
 	{ 3389, 2805, 2237 },
@@ -81,8 +90,6 @@ struct rcar_gen3_thermal_tsc {
 	void __iomem *base;
 	struct thermal_zone_device *zone;
 	struct equation_coefs coef;
-	int low;
-	int high;
 	int tj_t;
 	int id; /* thermal channel id */
 };
@@ -165,9 +172,8 @@ static int rcar_gen3_thermal_round(int temp)
 	return result * RCAR3_THERMAL_GRAN;
 }
 
-static int rcar_gen3_thermal_get_temp(void *devdata, int *temp)
+static int rcar_gen3_thermal_convert_temp(struct rcar_gen3_thermal_tsc *tsc)
 {
-	struct rcar_gen3_thermal_tsc *tsc = devdata;
 	int mcelsius, val;
 	u32 reg;
 
@@ -180,14 +186,23 @@ static int rcar_gen3_thermal_get_temp(void *devdata, int *temp)
 	else
 		val = FIXPT_DIV(FIXPT_INT(reg) - tsc->coef.b2,
 				tsc->coef.a2);
-	mcelsius = FIXPT_TO_MCELSIUS(val);
+	mcelsius = rcar_gen3_thermal_round(FIXPT_TO_MCELSIUS(val));
+	return mcelsius;
+}
+
+static int rcar_gen3_thermal_get_temp(void *devdata, int *temp)
+{
+	struct rcar_gen3_thermal_tsc *tsc = devdata;
+	int mcelsius;
+
+	mcelsius = rcar_gen3_thermal_convert_temp(tsc);
 
 	/* Make sure we are inside specifications */
 	if ((mcelsius < MCELSIUS(-40)) || (mcelsius > MCELSIUS(125)))
 		return -EIO;
 
 	/* Round value to device granularity setting */
-	*temp = rcar_gen3_thermal_round(mcelsius);
+	*temp = mcelsius;
 
 	return 0;
 }
@@ -206,12 +221,14 @@ static int rcar_gen3_thermal_mcelsius_to_temp(struct rcar_gen3_thermal_tsc *tsc,
 	return INT_FIXPT(val);
 }
 
-static int rcar_gen3_thermal_set_trips(void *devdata, int low, int high)
+static int rcar_gen3_thermal_set_irq_temp(struct rcar_gen3_thermal_tsc *tsc)
 {
-	struct rcar_gen3_thermal_tsc *tsc = devdata;
+	int mcelsius, low, high;
 
-	low = clamp_val(low, -40000, 120000);
-	high = clamp_val(high, -40000, 120000);
+	mcelsius = rcar_gen3_thermal_convert_temp(tsc);
+
+	low = mcelsius - MCELSIUS(1);
+	high = mcelsius + MCELSIUS(1);
 
 	rcar_gen3_thermal_write(tsc, REG_GEN3_IRQTEMP1,
 				rcar_gen3_thermal_mcelsius_to_temp(tsc, low));
@@ -219,15 +236,12 @@ static int rcar_gen3_thermal_set_trips(void *devdata, int low, int high)
 	rcar_gen3_thermal_write(tsc, REG_GEN3_IRQTEMP2,
 				rcar_gen3_thermal_mcelsius_to_temp(tsc, high));
 
-	tsc->low = low;
-	tsc->high = high;
 
 	return 0;
 }
 
 static const struct thermal_zone_of_device_ops rcar_gen3_tz_of_ops = {
 	.get_temp	= rcar_gen3_thermal_get_temp,
-	.set_trips	= rcar_gen3_thermal_set_trips,
 };
 
 static void rcar_thermal_irq_set(struct rcar_gen3_thermal_priv *priv, bool on)
@@ -248,9 +262,11 @@ static irqreturn_t rcar_gen3_thermal_irq(int irq, void *data)
 	for (i = 0; i < priv->num_tscs; i++) {
 		status = rcar_gen3_thermal_read(priv->tscs[i], REG_GEN3_IRQSTR);
 		rcar_gen3_thermal_write(priv->tscs[i], REG_GEN3_IRQSTR, 0);
-		if (status)
+		if (status) {
+			rcar_gen3_thermal_set_irq_temp(priv->tscs[i]);
 			thermal_zone_device_update(priv->tscs[i]->zone,
 						   THERMAL_EVENT_UNSPECIFIED);
+		}
 	}
 
 	return IRQ_HANDLED;
@@ -315,6 +331,10 @@ static const struct of_device_id rcar_gen3_thermal_dt_ids[] = {
 		.data = &rcar_gen3_ths_tj_1_m3_w,
 	},
 	{
+		.compatible = "renesas,r8a774a3-thermal",
+		.data = &rcar_gen3_ths_tj_1_m3_w,
+	},
+	{
 		.compatible = "renesas,r8a774b1-thermal",
 		.data = &rcar_gen3_ths_tj_1,
 	},
@@ -328,6 +348,10 @@ static const struct of_device_id rcar_gen3_thermal_dt_ids[] = {
 	},
 	{
 		.compatible = "renesas,r8a77965-thermal",
+		.data = &rcar_gen3_ths_tj_1,
+	},
+	{
+		.compatible = "renesas,r8a774e1-thermal",
 		.data = &rcar_gen3_ths_tj_1,
 	},
 	{},
@@ -363,9 +387,10 @@ static int rcar_gen3_thermal_probe(struct platform_device *pdev)
 	struct thermal_zone_device *zone;
 	int ret, irq, i;
 	char *irqname;
+	void __iomem *ptat_base = NULL;
+	unsigned int cor_para_value = 0;
 
 	/* default values if FUSEs are missing */
-	/* TODO: Read values from hardware on supported platforms */
 	int ptat[3] = { 2631, 1509, 435 };
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
@@ -403,6 +428,28 @@ static int rcar_gen3_thermal_probe(struct platform_device *pdev)
 	pm_runtime_enable(dev);
 	pm_runtime_get_sync(dev);
 
+	ptat_base = ioremap_nocache(PTAT_BASE, REG_GEN3_MAX_SIZE);
+	if (!ptat_base) {
+		dev_err(dev, "Cannot map FUSE registers");
+		ret = -ENOMEM;
+		goto error_unregister;
+	}
+
+	cor_para_value = ioread32(ptat_base + REG_GEN3_THSCP) &
+						COR_PARA_VLD;
+	if (cor_para_value != COR_PARA_VLD)
+		dev_info(dev, "is using pseudo fixed FUSE values\n");
+	else {
+		dev_info(dev, "is using hardware FUSE values\n");
+		ptat[0] = ioread32(ptat_base + REG_GEN3_PTAT1) &
+					GEN3_FUSE_MASK;
+		ptat[1] = ioread32(ptat_base + REG_GEN3_PTAT2) &
+					GEN3_FUSE_MASK;
+		ptat[2] = ioread32(ptat_base + REG_GEN3_PTAT3) &
+					GEN3_FUSE_MASK;
+	}
+	iounmap(ptat_base);
+
 	for (i = 0; i < TSC_MAX_NUM; i++) {
 		struct rcar_gen3_thermal_tsc *tsc;
 
@@ -426,8 +473,20 @@ static int rcar_gen3_thermal_probe(struct platform_device *pdev)
 		priv->tscs[i] = tsc;
 
 		priv->thermal_init(tsc);
+
+		if (cor_para_value == COR_PARA_VLD) {
+			thcode[i][0] = GEN3_FUSE_MASK &
+				rcar_gen3_thermal_read(tsc, REG_GEN3_THCODE1);
+			thcode[i][1] = GEN3_FUSE_MASK &
+				rcar_gen3_thermal_read(tsc, REG_GEN3_THCODE2);
+			thcode[i][2] = GEN3_FUSE_MASK &
+				rcar_gen3_thermal_read(tsc, REG_GEN3_THCODE3);
+		}
+
 		rcar_gen3_thermal_calc_coefs(tsc, ptat, thcode[i],
 					     *rcar_gen3_ths_tj_1);
+
+		rcar_gen3_thermal_set_irq_temp(tsc);
 
 		zone = devm_thermal_zone_of_sensor_register(dev, i, tsc,
 							    &rcar_gen3_tz_of_ops);
@@ -491,7 +550,7 @@ static int __maybe_unused rcar_gen3_thermal_resume(struct device *dev)
 		struct rcar_gen3_thermal_tsc *tsc = priv->tscs[i];
 
 		priv->thermal_init(tsc);
-		rcar_gen3_thermal_set_trips(tsc, tsc->low, tsc->high);
+		rcar_gen3_thermal_set_irq_temp(tsc);
 	}
 
 	rcar_thermal_irq_set(priv, true);

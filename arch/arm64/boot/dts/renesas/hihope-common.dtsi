@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Device Tree Source for the HiHope RZ/G2[MN] main board common parts
+ * Device Tree Source for the HiHope RZ/G2H Rev.4.0 and
+ * HiHope RZ/G2[MN] Rev.[2.0/3.0/4.0] main board common parts
  *
  * Copyright (C) 2019 Renesas Electronics Corp.
  */
@@ -11,6 +12,8 @@
 	aliases {
 		serial0 = &scif2;
 		serial1 = &hscif0;
+		serial2 = &hscif1;
+		serial3 = &scif0;
 	};
 
 	chosen {
@@ -32,17 +35,6 @@
 	leds {
 		compatible = "gpio-leds";
 
-		bt_active_led {
-			label = "blue:bt";
-			gpios = <&gpio7  0 GPIO_ACTIVE_HIGH>;
-			linux,default-trigger = "hci0-power";
-			default-state = "off";
-		};
-
-		led0 {
-			gpios = <&gpio6 11 GPIO_ACTIVE_HIGH>;
-		};
-
 		led1 {
 			gpios = <&gpio6 12 GPIO_ACTIVE_HIGH>;
 		};
@@ -55,11 +47,8 @@
 			gpios = <&gpio0  0 GPIO_ACTIVE_HIGH>;
 		};
 
-		wlan_active_led {
-			label = "yellow:wlan";
-			gpios = <&gpio7  1 GPIO_ACTIVE_HIGH>;
-			linux,default-trigger = "phy0tx";
-			default-state = "off";
+		led4 {
+			gpios = <&gpio6 11 GPIO_ACTIVE_HIGH>;
 		};
 	};
 
@@ -86,7 +75,8 @@
 
 		label = "rcar-sound";
 
-		dais = <&rsnd_port>;
+		dais = <&rsnd_port0	/* HDMI Audio */
+			&rsnd_port1>;	/* External PCM5102A Codec */
 	};
 
 	vbus0_usb2: regulator-vbus0-usb2 {
@@ -113,17 +103,6 @@
 			  1800000 0>;
 	};
 
-	wlan_en_reg: regulator-wlan_en {
-		compatible = "regulator-fixed";
-		regulator-name = "wlan-en-regulator";
-		regulator-min-microvolt = <1800000>;
-		regulator-max-microvolt = <1800000>;
-		startup-delay-us = <70000>;
-
-		gpio = <&gpio_expander 1 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-	};
-
 	x302_clk: x302-clock {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
@@ -134,6 +113,21 @@
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
 		clock-frequency = <25000000>;
+	};
+
+	vspm_if {
+		compatible = "renesas,vspm_if";
+	};
+
+	pcm5102a: pcm5102a {
+		compatible = "ti,pcm5102a";
+		#sound-dai-cells = <0>;
+
+		port {
+			pcm5102a_endpoint: endpoint {
+				remote-endpoint = <&rsnd_endpoint1>;
+			};
+		};
 	};
 };
 
@@ -195,11 +189,21 @@
 
 	uart-has-rtscts;
 	status = "okay";
+};
 
-	bluetooth {
-		compatible = "ti,wl1837-st";
-		enable-gpios = <&gpio_expander 2 GPIO_ACTIVE_HIGH>;
-	};
+&hscif1 {
+	pinctrl-0 = <&hscif1_pins>;
+	pinctrl-names = "default";
+
+	uart-has-rtscts;
+	status = "okay";
+};
+
+&scif0 {
+	pinctrl-0 = <&scif0_pins>;
+	pinctrl-names = "default";
+
+	status = "okay";
 };
 
 &hsusb {
@@ -210,13 +214,6 @@
 &i2c4 {
 	clock-frequency = <400000>;
 	status = "okay";
-
-	gpio_expander: gpio@20 {
-		compatible = "onnn,pca9654";
-		reg = <0x20>;
-		gpio-controller;
-		#gpio-cells = <2>;
-	};
 
 	versaclock5: clock-generator@6a {
 		compatible = "idt,5p49v5923";
@@ -258,6 +255,16 @@
 		function = "scif_clk";
 	};
 
+	hscif1_pins: hscif1 {
+		groups = "hscif1_data_a", "hscif1_ctrl_a";
+		function = "hscif1";
+	};
+
+	scif0_pins: scif0 {
+		groups = "scif0_data";
+		function = "scif0";
+	};
+
 	sdhi0_pins: sd0 {
 		groups = "sdhi0_data4", "sdhi0_ctrl";
 		function = "sdhi0";
@@ -287,6 +294,11 @@
 		function = "audio_clk";
 	};
 
+	sound_pins: sound {
+		groups = "ssi01239_ctrl", "ssi0_data", "ssi1_data_a";
+		function = "ssi";
+	};
+
 	usb0_pins: usb0 {
 		groups = "usb0";
 		function = "usb0";
@@ -302,6 +314,10 @@
 			pins = "GP_6_27";
 			bias-pull-up;
 		};
+
+		pwen {
+			pins = "GP_6_26";
+		};
 	};
 
 	usb30_pins: usb30 {
@@ -311,7 +327,7 @@
 };
 
 &rcar_sound {
-	pinctrl-0 = <&sound_clk_pins>;
+	pinctrl-0 = <&sound_clk_pins &sound_pins>;
 	pinctrl-names = "default";
 
 	status = "okay";
@@ -319,17 +335,36 @@
 	/* Single DAI */
 	#sound-dai-cells = <0>;
 
-	rsnd_port: port {
-		rsnd_endpoint: endpoint {
-			remote-endpoint = <&dw_hdmi0_snd_in>;
+	ports {
+		rsnd_port0: port@0 {
+			rsnd_endpoint: endpoint {
+				remote-endpoint = <&dw_hdmi0_snd_in>;
 
-			dai-format = "i2s";
-			bitclock-master = <&rsnd_endpoint>;
-			frame-master = <&rsnd_endpoint>;
 
-			playback = <&ssi2>;
+				dai-format = "i2s";
+				bitclock-master = <&rsnd_endpoint>;
+				frame-master = <&rsnd_endpoint>;
+
+				playback = <&ssi2>;
+			};
+		};
+
+		rsnd_port1: port@1 {
+			rsnd_endpoint1: endpoint {
+				remote-endpoint = <&pcm5102a_endpoint>;
+
+				dai-format = "i2s";
+				bitclock-master = <&rsnd_endpoint1>;
+				frame-master = <&rsnd_endpoint1>;
+
+				playback = <&ssi1 &src1 &dvc0>;
+			};
 		};
 	};
+};
+
+&ssi1 {
+	shared-pin;
 };
 
 &rwdt {
@@ -392,6 +427,7 @@
 	vqmmc-supply = <&reg_1p8v>;
 	bus-width = <8>;
 	mmc-hs200-1_8v;
+	mmc-hs400-1_8v;
 	non-removable;
 	fixed-emmc-driver-type = <1>;
 	status = "okay";
@@ -437,5 +473,33 @@
 	pinctrl-0 = <&usb30_pins>;
 	pinctrl-names = "default";
 
+	status = "okay";
+};
+
+&cmt0 {
+	status = "okay";
+};
+
+&cmt1 {
+	status = "okay";
+};
+
+&tmu0 {
+	status = "okay";
+};
+
+&tmu1 {
+	status = "okay";
+};
+
+&tmu2 {
+	status = "okay";
+};
+
+&tmu3 {
+	status = "okay";
+};
+
+&tmu4 {
 	status = "okay";
 };

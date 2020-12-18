@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Device Tree Source for the RZ/G2[MN] HiHope sub board common parts
+ * Device Tree Source for the RZ/G2[MNH] HiHope sub board common parts
  *
  * Copyright (C) 2019 Renesas Electronics Corp.
  */
@@ -12,14 +12,6 @@
 
 	chosen {
 		bootargs = "ignore_loglevel rw root=/dev/nfs ip=on";
-	};
-
-	backlight {
-		compatible = "pwm-backlight";
-		pwms = <&pwm0 0 50000>;
-
-		brightness-levels = <0 2 8 16 32 64 128 255>;
-		default-brightness-level = <6>;
 	};
 };
 
@@ -39,45 +31,20 @@
 	};
 };
 
-&can0 {
-	pinctrl-0 = <&can0_pins>;
+&canfd {
+	pinctrl-0 = <&canfd_pins>;
 	pinctrl-names = "default";
 	status = "okay";
+
+	channel0 {
+		status = "okay";
+	};
 };
 
 &can1 {
 	pinctrl-0 = <&can1_pins>;
 	pinctrl-names = "default";
 	status = "okay";
-};
-
-&gpio1 {
-	/*
-	 * When GP1_20 is LOW LVDS0 is connected to the LVDS connector
-	 * When GP1_20 is HIGH LVDS0 is connected to the LT8918L
-	 */
-	lvds-connector-en-gpio {
-		gpio-hog;
-		gpios = <20 GPIO_ACTIVE_HIGH>;
-		output-low;
-		line-name = "lvds-connector-en-gpio";
-	};
-};
-
-&lvds0 {
-	/*
-	 * Please include the LVDS panel .dtsi file and uncomment the below line
-	 * to enable LVDS panel connected to RZ/G2[MN] boards.
-	 */
-
-	/* status = "okay"; */
-
-	ports {
-		port@1 {
-			lvds_connector: endpoint {
-			};
-		};
-	};
 };
 
 &pciec0 {
@@ -106,25 +73,15 @@
 		};
 	};
 
-	can0_pins: can0 {
-		groups = "can0_data_a";
-		function = "can0";
+	canfd_pins: canfd {
+		channel0 {
+			groups = "canfd0_data_a";
+			function = "canfd0";
+		};
 	};
 
 	can1_pins: can1 {
 		groups = "can1_data";
 		function = "can1";
 	};
-
-	pwm0_pins: pwm0 {
-		groups = "pwm0";
-		function = "pwm0";
-	};
-};
-
-&pwm0 {
-	pinctrl-0 = <&pwm0_pins>;
-	pinctrl-names = "default";
-
-	status = "okay";
 };
