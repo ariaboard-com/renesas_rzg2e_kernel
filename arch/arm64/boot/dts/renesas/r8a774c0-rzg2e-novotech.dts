@@ -132,6 +132,7 @@
 				sound-dai = <&rt5616>;
 			};
 		};
+
 	};
 
 	/* External DU dot clocks */
@@ -259,7 +260,7 @@
 	};
 
 	sound_clk_pins: sound_clk {
-		groups = "audio_clkout1_a",
+		groups = "audio_clkout_a", "audio_clkout1_a",
 			 "audio_clk_a", "audio_clk_b_a", "audio_clk_c_a";
 		function = "audio_clk";
 	};
@@ -444,6 +445,7 @@
 
 		dai1 {
 			playback = <&ssi4 &src4 &dvc1>;
+			capture  = <&ssi3 &src3 &dvc1>;
 		};
 	};
 };

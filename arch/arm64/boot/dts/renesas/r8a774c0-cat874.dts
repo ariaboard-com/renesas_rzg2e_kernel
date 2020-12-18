@@ -462,6 +462,10 @@
 	};
 };
 
+&ssi3 {
+	shared-pin;
+};
+
 &ssi4 {
 	shared-pin;
 };
