@@ -111,6 +111,15 @@
 		regulator-boot-on;
 	};
 
+	wlan_en_reg: fixedregulator {
+		compatible = "regulator-fixed";
+		regulator-name = "wlan-en-regulator";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+
 	sound {
 		compatible = "simple-audio-card";
 		simple-audio-card,format = "i2s";
@@ -326,6 +335,13 @@
 		groups = "can1_data";
 		function = "can1";
 	};
+
+
+	sdhi1_pins: sd1 {
+		groups = "sdhi1_data4", "sdhi1_ctrl";
+		function = "sdhi1";
+		power-source = <3300>;
+	};
 };
 
 &scif2 {
@@ -381,6 +397,25 @@
 	cap-sd-highspeed;
 	no-1-8-v;
 	status = "okay";
+};
+
+&sdhi1 {
+	status = "okay";
+	pinctrl-0 = <&sdhi1_pins>;
+	pinctrl-names = "default";
+
+	vmmc-supply = <&wlan_en_reg>;
+	bus-width = <4>;
+	max-frequency = <52000000>;
+	non-removable;
+	cap-power-off-card;
+	keep-power-in-suspend;	
+	no-1-8-v;
+
+        bcmdhd: bcmdhd@0 {
+                compatible = "android,bcmdhd_wlan";
+                status = "okay";
+        };
 };
 
 &pwm5 {
@@ -556,6 +591,13 @@
 		clocks = <&rt5616_mclk>;
 		#sound-dai-cells = <0>;
 	};
+
+	rx8025: rtc@32 {
+		compatible = "dallas,rx8025";
+		reg = <0x32>;
+		trickle-resistor-ohms = <250>;
+	};
+
 };
 
 &msiof0 {
@@ -614,5 +656,22 @@
 	clocks = <&cpg CPG_MOD 727>,
 		 <&x13_clk>;
 	clock-names = "fck", "dclkin.0";
+};
+
+&gpio3 {
+/*
+        bluetooth-on-gpio{
+                gpio-hog;
+                gpios = <13 GPIO_ACTIVE_HIGH>;
+                output-high;
+                line-name = "bluetooth-on-gpio";
+        };
+*/
+        wl-reg-on-gpio{
+                gpio-hog;
+                gpios = <14 GPIO_ACTIVE_HIGH>;
+                output-high;
+                line-name = "wl-reg-on-gpio";
+        };
 };
 
