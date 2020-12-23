@@ -26,6 +26,7 @@ dtb-$(CONFIG_ARCH_R8A774C0) += r8a774c0-es10-cat874.dtb \
 			       r8a774c0-es10-ek874.dtb \
 			       r8a774c0-es10-ek874-idk-2121wr.dtb \
 			       r8a774c0-es10-ek874-mipi-2.1.dtb
+dtb-$(CONFIG_ARCH_R8A774C0) += r8a774c0-rzg2e-novotech.dtb
 dtb-$(CONFIG_ARCH_R8A774E1) += r8a774e1-hihope-rzg2h.dtb \
 			       r8a774e1-hihope-rzg2h-ex.dtb \
 			       r8a774e1-hihope-rzg2h-ex-idk-1110wr.dtb \
