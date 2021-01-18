@@ -120,6 +120,36 @@
 		regulator-boot-on;
 	};
 
+	ov5647_vdddo_1v8: 1p8v {
+		compatible = "regulator-fixed";
+		regulator-name = "camera_vdddo";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		regulator-always-on;
+	};
+
+	ov5647_vdda_2v8: 2p8v {
+		compatible = "regulator-fixed";
+		regulator-name = "camera_vdda";
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
+		regulator-always-on;
+	};
+
+	ov5647_vddd_1v5: 1p5v {
+		compatible = "regulator-fixed";
+		regulator-name = "camera_vddd";
+		regulator-min-microvolt = <1500000>;
+		regulator-max-microvolt = <1500000>;
+		regulator-always-on;
+	};
+
+	osc25250_clk: osc25250_clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+
 	sound {
 		compatible = "simple-audio-card";
 		simple-audio-card,format = "i2s";
@@ -192,6 +222,11 @@
                 };
         };
 
+	osc25250_clk: osc25250_clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <25000000>;
+	};
 };
 
 &audio_clk_a {
@@ -601,6 +636,26 @@
 		};
 	};
 
+	ov5647_csi40: ov5647@36 {
+		compatible = "ovti,ov5647";
+		reg = <0x36>;
+		clock-names = "xclk";
+		clocks = <&osc25250_clk>;
+		clock-frequency = <24000000>;
+		vdddo-supply = <&ov5647_vdddo_1v8>;
+		vdda-supply = <&ov5647_vdda_2v8>;
+		vddd-supply = <&ov5647_vddd_1v5>;
+		enable-gpios = <&gpio5 16 GPIO_ACTIVE_HIGH>;
+
+		port {
+			ov5647_csi40_ep: endpoint {
+				clock-lanes = <0>;
+				data-lanes = <1 2>;
+				remote-endpoint = <&csi40_in>;
+			};
+		};
+	};
+
 };
 
 &msiof0 {
@@ -676,5 +731,19 @@
                 output-high;
                 line-name = "wl-reg-on-gpio";
         };
+};
+
+&csi40 {
+	status = "okay";
+
+	ports {
+		port {
+			csi40_in: endpoint {
+				clock-lanes = <0>;
+				data-lanes = <1 2>;
+				remote-endpoint = <&ov5647_csi40_ep>;
+			};
+		};
+	};
 };
 
