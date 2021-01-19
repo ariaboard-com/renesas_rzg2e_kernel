@@ -33,5 +33,5 @@ cp -v "build/${KNAME}/arch/arm64/boot/Image" "deploy/${KNAME}/"
 cp -v "build/${KNAME}/arch/arm64/boot/dts/renesas/"*.dtb "deploy/${KNAME}/"
 make O="build/${KNAME}" modules_install INSTALL_MOD_PATH="${WORKDIR}/deploy/${KNAME}/modules"
 
-tar -czf deploy/${KNAME}/modules.tar.gz -C deploy/${KNAME}/modules .
+tar -czf deploy/${KNAME}/modules.tar.gz -C deploy/${KNAME}/modules . --owner=0 --group=0
 
