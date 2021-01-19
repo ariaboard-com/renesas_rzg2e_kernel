@@ -641,11 +641,12 @@
 		reg = <0x36>;
 		clock-names = "xclk";
 		clocks = <&osc25250_clk>;
-		clock-frequency = <24000000>;
+		clock-frequency = <25000000>;
 		vdddo-supply = <&ov5647_vdddo_1v8>;
 		vdda-supply = <&ov5647_vdda_2v8>;
 		vddd-supply = <&ov5647_vddd_1v5>;
 		enable-gpios = <&gpio5 16 GPIO_ACTIVE_HIGH>;
+		virtual-channel = /bits/ 8 <0>;
 
 		port {
 			ov5647_csi40_ep: endpoint {
