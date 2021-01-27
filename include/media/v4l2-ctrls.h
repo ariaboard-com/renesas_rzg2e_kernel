@@ -744,6 +744,7 @@ void v4l2_ctrl_activate(struct v4l2_ctrl *ctrl, bool active);
  * take the lock itself.
  */
 void v4l2_ctrl_grab(struct v4l2_ctrl *ctrl, bool grabbed);
+void __v4l2_ctrl_grab(struct v4l2_ctrl *ctrl, bool grabbed);
 
 /**
  *__v4l2_ctrl_modify_range() - Unlocked variant of v4l2_ctrl_modify_range()

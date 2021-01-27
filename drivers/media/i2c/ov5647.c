@@ -124,6 +124,8 @@ struct ov5647 {
 	struct v4l2_ctrl		*vblank;
 	struct v4l2_ctrl		*exposure;
 	bool				write_mode_regs;
+
+	u8 virtual_channel;
 };
 
 static inline struct ov5647 *to_state(struct v4l2_subdev *sd)
@@ -717,7 +719,7 @@ static struct ov5647_mode supported_modes_10bit[] = {
 };
 
 /* Use 2x2 binned 10-bit mode as default. */
-#define OV5647_DEFAULT_MODE (&supported_modes_10bit[2])
+#define OV5647_DEFAULT_MODE (&supported_modes_8bit[0])
 
 static int ov5647_write16(struct v4l2_subdev *sd, u16 reg, u16 val)
 {
@@ -849,7 +851,7 @@ static int __sensor_init(struct v4l2_subdev *sd)
 		state->write_mode_regs = false;
 	}
 
-	ret = ov5647_set_virtual_channel(sd, 0);
+	ret = ov5647_set_virtual_channel(sd, state->virtual_channel);
 	if (ret < 0)
 		return ret;
 
@@ -1502,6 +1504,7 @@ static int ov5647_probe(struct i2c_client *client)
 	struct device_node *np = client->dev.of_node;
 	u32 xclk_freq;
 	int hblank, exposure_max, exposure_def;
+	u8 virtual_channel;
 	/* struct v4l2_fwnode_device_properties props; */
 
 	sensor = devm_kzalloc(dev, sizeof(*sensor), GFP_KERNEL);
@@ -1528,6 +1531,12 @@ static int ov5647_probe(struct i2c_client *client)
 		dev_err(dev, "Unsupported clock frequency: %u\n", xclk_freq);
 		return -EINVAL;
 	}
+
+	if (!of_property_read_u8(dev->of_node, "virtual-channel",
+							&virtual_channel))
+		sensor->virtual_channel = virtual_channel;
+	else
+		sensor->virtual_channel = 0;
 
 	/* Request the power down GPIO asserted */
 	sensor->pwdn = devm_gpiod_get_optional(&client->dev, "pwdn",

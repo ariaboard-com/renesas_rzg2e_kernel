@@ -681,7 +681,8 @@ void rvin_crop_scale_comp(struct rvin_dev *vin)
 	if (vin->format.pixelformat == V4L2_PIX_FMT_NV16 ||
 		vin->format.pixelformat == V4L2_PIX_FMT_NV12)
 		rvin_write(vin, ALIGN(vin->format.width, 0x20), VNIS_REG);
-	else if (vin->format.pixelformat == V4L2_PIX_FMT_SRGGB8)
+	else if (vin->format.pixelformat == V4L2_PIX_FMT_SRGGB8 ||
+		vin->format.pixelformat == V4L2_PIX_FMT_SBGGR8)
 		rvin_write(vin, ALIGN(vin->format.width / 2, 0x10), VNIS_REG);
 	else
 		rvin_write(vin, ALIGN(vin->format.width, 0x10), VNIS_REG);
@@ -773,6 +774,7 @@ static int rvin_setup(struct rvin_dev *vin)
 		input_is_yuv = true;
 		break;
 	case MEDIA_BUS_FMT_SRGGB8_1X8:
+	case MEDIA_BUS_FMT_SBGGR8_1X8:
 		vnmc |= VNMC_INF_RAW8 | VNMC_BPS;
 		break;
 	default:
@@ -839,6 +841,7 @@ static int rvin_setup(struct rvin_dev *vin)
 		dmr = VNDMR_EXRGB;
 		break;
 	case V4L2_PIX_FMT_SRGGB8:
+	case V4L2_PIX_FMT_SBGGR8:
 		dmr = 0;
 		break;
 	default:
@@ -1170,6 +1173,7 @@ static int rvin_mc_validate_format(struct rvin_dev *vin, struct v4l2_subdev *sd,
 	case MEDIA_BUS_FMT_UYVY10_2X10:
 	case MEDIA_BUS_FMT_RGB888_1X24:
 	case MEDIA_BUS_FMT_SRGGB8_1X8:
+        case MEDIA_BUS_FMT_SBGGR8_1X8:
 		vin->mbus_code = fmt.format.code;
 		break;
 	default:

@@ -28,10 +28,17 @@ make O="build/${KNAME}" renesas/r8a774c0-rzg2e-novotech.dtb
 rm -rf "deploy/${KNAME}" 2>/dev/null || true
 mkdir -p "deploy/${KNAME}"
 mkdir -p "deploy/${KNAME}/modules"
+mkdir -p "deploy/${KNAME}/openwrt-modules/lib/modules"
 
 cp -v "build/${KNAME}/arch/arm64/boot/Image" "deploy/${KNAME}/"
 cp -v "build/${KNAME}/arch/arm64/boot/dts/renesas/"*.dtb "deploy/${KNAME}/"
-make O="build/${KNAME}" modules_install INSTALL_MOD_PATH="${WORKDIR}/deploy/${KNAME}/modules"
+make O="build/${KNAME}" modules_install INSTALL_MOD_PATH="${WORKDIR}/deploy/${KNAME}/modules" INSTALL_MOD_STRIP=1
+
+RELEASE_NAME=$(basename "deploy/${KNAME}/modules/lib/modules/"*)
+OPENWRT_MODULE_DIR="deploy/${KNAME}/openwrt-modules/lib/modules/${RELEASE_NAME}"
+mkdir -p "${OPENWRT_MODULE_DIR}"
+
+find ${WORKDIR}/deploy/${KNAME}/modules/ -name "*.ko" -exec cp {} "${OPENWRT_MODULE_DIR}" \;
 
 tar -czf deploy/${KNAME}/modules.tar.gz -C deploy/${KNAME}/modules . --owner=0 --group=0
-
+tar -czf deploy/${KNAME}/openwrt-modules.tar.gz -C  deploy/${KNAME}/openwrt-modules . --owner=0 --group=0

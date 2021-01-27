@@ -120,7 +120,7 @@
 		regulator-boot-on;
 	};
 
-	ov5647_vdddo_1v8: 1p8v {
+	imx219_vdddo_1v8: 1p8v {
 		compatible = "regulator-fixed";
 		regulator-name = "camera_vdddo";
 		regulator-min-microvolt = <1800000>;
@@ -128,7 +128,7 @@
 		regulator-always-on;
 	};
 
-	ov5647_vdda_2v8: 2p8v {
+	imx219_vdda_2v8: 2p8v {
 		compatible = "regulator-fixed";
 		regulator-name = "camera_vdda";
 		regulator-min-microvolt = <2800000>;
@@ -136,11 +136,11 @@
 		regulator-always-on;
 	};
 
-	ov5647_vddd_1v5: 1p5v {
+	imx219_vddd_1v2: 1p2v {
 		compatible = "regulator-fixed";
 		regulator-name = "camera_vddd";
-		regulator-min-microvolt = <1500000>;
-		regulator-max-microvolt = <1500000>;
+		regulator-min-microvolt = <1200000>;
+		regulator-max-microvolt = <1200000>;
 		regulator-always-on;
 	};
 
@@ -225,7 +225,7 @@
 	osc25250_clk: osc25250_clk {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
-		clock-frequency = <25000000>;
+		clock-frequency = <24000000>;
 	};
 };
 
@@ -355,6 +355,10 @@
 		groups = "sdhi1_data4", "sdhi1_ctrl";
 		function = "sdhi1";
 		power-source = <3300>;
+	};
+
+	camera_pins: camera {
+		
 	};
 };
 
@@ -636,23 +640,27 @@
 		};
 	};
 
-	ov5647_csi40: ov5647@36 {
-		compatible = "ovti,ov5647";
-		reg = <0x36>;
+	imx219_csi40: imx219@10 {
+		compatible = "sony,imx219";
+		reg = <0x10>;
+		pinctrl-0 = <&camera_pins>;
+		pinctrl-names = "default";
 		clock-names = "xclk";
 		clocks = <&osc25250_clk>;
-		clock-frequency = <25000000>;
-		vdddo-supply = <&ov5647_vdddo_1v8>;
-		vdda-supply = <&ov5647_vdda_2v8>;
-		vddd-supply = <&ov5647_vddd_1v5>;
-		enable-gpios = <&gpio5 16 GPIO_ACTIVE_HIGH>;
+		clock-frequency = <24000000>;
+		VDIG-supply = <&imx219_vdddo_1v8>;
+		VANA-supply = <&imx219_vdda_2v8>;
+		VDDL-supply = <&imx219_vddd_1v2>;
+		reset-gpios = <&gpio5 16 GPIO_ACTIVE_HIGH>;
 		virtual-channel = /bits/ 8 <0>;
 
 		port {
-			ov5647_csi40_ep: endpoint {
+			imx219_csi40_ep: endpoint {
 				clock-lanes = <0>;
 				data-lanes = <1 2>;
 				remote-endpoint = <&csi40_in>;
+				/* clock-noncontinuous; */
+				link-frequencies = /bits/ 64 <456000000>;
 			};
 		};
 	};
@@ -718,14 +726,6 @@
 };
 
 &gpio3 {
-/*
-        bluetooth-on-gpio{
-                gpio-hog;
-                gpios = <13 GPIO_ACTIVE_HIGH>;
-                output-high;
-                line-name = "bluetooth-on-gpio";
-        };
-*/
         wl-reg-on-gpio{
                 gpio-hog;
                 gpios = <14 GPIO_ACTIVE_HIGH>;
@@ -742,7 +742,7 @@
 			csi40_in: endpoint {
 				clock-lanes = <0>;
 				data-lanes = <1 2>;
-				remote-endpoint = <&ov5647_csi40_ep>;
+				remote-endpoint = <&imx219_csi40_ep>;
 			};
 		};
 	};
