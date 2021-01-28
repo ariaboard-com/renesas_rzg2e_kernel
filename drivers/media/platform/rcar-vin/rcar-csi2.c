@@ -413,9 +413,14 @@ static int rcsi2_wait_phy_start(struct rcar_csi2 *priv)
 		usleep_range(1000, 2000);
 	}
 
+#if 0
 	dev_err(priv->dev, "Timeout waiting for LP-11 state\n");
 
 	return -ETIMEDOUT;
+#endif
+	dev_warn(priv->dev, "Timeout waiting for LP-11 state\n");
+
+	return 0;
 }
 
 static int rcsi2_set_phypll(struct rcar_csi2 *priv, unsigned int mbps)
