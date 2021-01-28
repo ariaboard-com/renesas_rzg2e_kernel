@@ -434,6 +434,14 @@
                 compatible = "android,bcmdhd_wlan";
                 status = "okay";
         };
+
+/*
+	brcmf: wifi@0 {
+		reg = <0>;
+		compatible = "brcm,bcm4329-fmac";
+                status = "okay";
+	};
+*/
 };
 
 &pwm5 {
