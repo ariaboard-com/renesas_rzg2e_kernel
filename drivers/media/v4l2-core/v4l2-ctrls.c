@@ -26,6 +26,7 @@
 #include <media/v4l2-device.h>
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-event.h>
+#include <media/v4l2-fwnode.h>
 #include <media/v4l2-dev.h>
 
 #define has_op(master, op) \
@@ -3638,3 +3639,42 @@ __poll_t v4l2_ctrl_poll(struct file *file, struct poll_table_struct *wait)
 	return 0;
 }
 EXPORT_SYMBOL(v4l2_ctrl_poll);
+
+int v4l2_ctrl_new_fwnode_properties(struct v4l2_ctrl_handler *hdl,
+				    const struct v4l2_ctrl_ops *ctrl_ops,
+				    const struct v4l2_fwnode_device_properties *p)
+{
+	if (p->location != V4L2_FWNODE_PROPERTY_UNSET) {
+		u32 orientation_ctrl;
+
+		switch (p->location) {
+		case V4L2_FWNODE_LOCATION_FRONT:
+			orientation_ctrl = V4L2_CAMERA_ORIENTATION_FRONT;
+			break;
+		case V4L2_FWNODE_LOCATION_BACK:
+			orientation_ctrl = V4L2_CAMERA_ORIENTATION_BACK;
+			break;
+		case V4L2_FWNODE_LOCATION_EXTERNAL:
+			orientation_ctrl = V4L2_CAMERA_ORIENTATION_EXTERNAL;
+			break;
+		default:
+			return -EINVAL;
+		}
+		if (!v4l2_ctrl_new_std_menu(hdl, ctrl_ops,
+					    V4L2_CID_CAMERA_ORIENTATION,
+					    V4L2_CAMERA_ORIENTATION_EXTERNAL, 0,
+					    orientation_ctrl))
+			return hdl->error;
+	}
+
+	if (p->rotation != V4L2_FWNODE_PROPERTY_UNSET) {
+		if (!v4l2_ctrl_new_std(hdl, ctrl_ops,
+				       V4L2_CID_CAMERA_SENSOR_ROTATION,
+				       p->rotation, p->rotation, 1,
+				       p->rotation))
+			return hdl->error;
+	}
+
+	return hdl->error;
+}
+EXPORT_SYMBOL(v4l2_ctrl_new_fwnode_properties);

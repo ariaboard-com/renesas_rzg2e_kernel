@@ -78,7 +78,7 @@
 #define IMX219_ANA_GAIN_MIN		0
 #define IMX219_ANA_GAIN_MAX		232
 #define IMX219_ANA_GAIN_STEP		1
-#define IMX219_ANA_GAIN_DEFAULT		0x0
+#define IMX219_ANA_GAIN_DEFAULT		232
 
 /* Digital gain control */
 #define IMX219_REG_DIGITAL_GAIN		0x0158
@@ -693,7 +693,7 @@ static int imx219_open(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh)
 	try_fmt->width = supported_modes[0].width;
 	try_fmt->height = supported_modes[0].height;
 	try_fmt->code = imx219_get_format_code(imx219,
-					       MEDIA_BUS_FMT_SRGGB10_1X10);
+					       MEDIA_BUS_FMT_SRGGB8_1X8);
 	try_fmt->field = V4L2_FIELD_NONE;
 
 	/* Initialize try_crop rectangle. */
@@ -1258,7 +1258,7 @@ static int imx219_init_controls(struct imx219 *imx219)
 	struct i2c_client *client = v4l2_get_subdevdata(&imx219->sd);
 	struct v4l2_ctrl_handler *ctrl_hdlr;
 	unsigned int height = imx219->mode->height;
-	/* struct v4l2_fwnode_device_properties props; */
+	struct v4l2_fwnode_device_properties props;
 	int exposure_max, exposure_def, hblank;
 	int i, ret;
 
@@ -1342,7 +1342,6 @@ static int imx219_init_controls(struct imx219 *imx219)
 		goto error;
 	}
 
-/*
 	ret = v4l2_fwnode_device_parse(&client->dev, &props);
 	if (ret)
 		goto error;
@@ -1351,7 +1350,7 @@ static int imx219_init_controls(struct imx219 *imx219)
 					      &props);
 	if (ret)
 		goto error;
-*/
+
 	imx219->sd.ctrl_handler = ctrl_hdlr;
 
 	return 0;
@@ -1381,19 +1380,12 @@ static int imx219_check_hwcfg(struct device *dev)
 		return -EINVAL;
 	}
 
-	
 	ep_cfg = v4l2_fwnode_endpoint_alloc_parse(endpoint);
 	if (IS_ERR(ep_cfg)) {
 		dev_err(dev, "could not parse endpoint\n");
 		goto error_out;
 	}
 
-/*
-	ret = v4l2_fwnode_endpoint_parse(endpoint, &ep_cfg);
-	if (ret)
-		goto error_out;
-	fwnode_handle_put(endpoint);
-*/
 	/* Check the number of MIPI CSI2 data lanes */
 	if (ep_cfg->bus.mipi_csi2.num_data_lanes != 2) {
 		dev_err(dev, "only 2 data lanes are currently supported\n");

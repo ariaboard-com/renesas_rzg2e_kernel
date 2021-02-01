@@ -320,6 +320,48 @@ void v4l2_fwnode_put_link(struct v4l2_fwnode_link *link)
 }
 EXPORT_SYMBOL_GPL(v4l2_fwnode_put_link);
 
+int v4l2_fwnode_device_parse(struct device *dev,
+			     struct v4l2_fwnode_device_properties *props)
+{
+	struct fwnode_handle *fwnode = dev_fwnode(dev);
+	u32 val;
+	int ret;
+
+	memset(props, 0, sizeof(*props));
+
+	props->location = V4L2_FWNODE_PROPERTY_UNSET;
+	ret = fwnode_property_read_u32(fwnode, "location", &val);
+	if (!ret) {
+		switch (val) {
+		case V4L2_FWNODE_LOCATION_FRONT:
+		case V4L2_FWNODE_LOCATION_BACK:
+		case V4L2_FWNODE_LOCATION_EXTERNAL:
+			break;
+		default:
+			dev_warn(dev, "Unsupported device location: %u\n", val);
+			return -EINVAL;
+		}
+
+		props->location = val;
+		dev_dbg(dev, "device location: %u\n", val);
+	}
+
+	props->rotation = V4L2_FWNODE_PROPERTY_UNSET;
+	ret = fwnode_property_read_u32(fwnode, "rotation", &val);
+	if (!ret) {
+		if (val >= 360 || val % 90) {
+			dev_warn(dev, "Unsupported device rotation: %u\n", val);
+			return -EINVAL;
+		}
+
+		props->rotation = val;
+		dev_dbg(dev, "device rotation: %u\n", val);
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(v4l2_fwnode_device_parse);
+
 static int v4l2_async_notifier_realloc(struct v4l2_async_notifier *notifier,
 				       unsigned int max_subdevs)
 {

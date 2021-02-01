@@ -112,6 +112,36 @@ struct v4l2_fwnode_endpoint {
 };
 
 /**
+ * v4l2_fwnode_location - identify a non initialized property.
+ *
+ * All properties in &struct v4l2_fwnode_device_properties are initialized
+ * to this value.
+ */
+#define V4L2_FWNODE_PROPERTY_UNSET   (-1U)
+
+/**
+ * enum v4l2_fwnode_location - possible device locations
+ * @V4L2_FWNODE_LOCATION_FRONT: device installed on the front side
+ * @V4L2_FWNODE_LOCATION_BACK: device installed on the back side
+ * @V4L2_FWNODE_LOCATION_EXTERNAL: device externally located
+ */
+enum v4l2_fwnode_location {
+	V4L2_FWNODE_LOCATION_FRONT,
+	V4L2_FWNODE_LOCATION_BACK,
+	V4L2_FWNODE_LOCATION_EXTERNAL
+};
+
+/**
+ * struct v4l2_fwnode_device_properties - fwnode device properties
+ * @location: device location. See &enum v4l2_fwnode_location
+ * @rotation: device rotation
+ */
+struct v4l2_fwnode_device_properties {
+	enum v4l2_fwnode_location location;
+	unsigned int rotation;
+};
+
+/**
  * struct v4l2_fwnode_link - a link between two endpoints
  * @local_node: pointer to device_node of this endpoint
  * @local_port: identifier of the port this endpoint belongs to
@@ -213,6 +243,22 @@ int v4l2_fwnode_parse_link(struct fwnode_handle *fwnode,
  */
 void v4l2_fwnode_put_link(struct v4l2_fwnode_link *link);
 
+/**
+ * v4l2_fwnode_device_parse() - parse fwnode device properties
+ * @dev: pointer to &struct device
+ * @props: pointer to &struct v4l2_fwnode_device_properties where to store the
+ *	   parsed properties values
+ *
+ * This function parses and validates the V4L2 fwnode device properties from the
+ * firmware interface, and fills the @struct v4l2_fwnode_device_properties
+ * provided by the caller.
+ *
+ * Return:
+ *	% 0 on success
+ *	%-EINVAL if a parsed property value is not valid
+ */
+int v4l2_fwnode_device_parse(struct device *dev,
+			     struct v4l2_fwnode_device_properties *props);
 
 /**
  * typedef parse_endpoint_func - Driver's callback function to be called on
