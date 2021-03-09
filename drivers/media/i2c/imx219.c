@@ -78,7 +78,7 @@
 #define IMX219_ANA_GAIN_MIN		0
 #define IMX219_ANA_GAIN_MAX		232
 #define IMX219_ANA_GAIN_STEP		1
-#define IMX219_ANA_GAIN_DEFAULT		232
+#define IMX219_ANA_GAIN_DEFAULT		128
 
 /* Digital gain control */
 #define IMX219_REG_DIGITAL_GAIN		0x0158
