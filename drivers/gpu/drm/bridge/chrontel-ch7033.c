@@ -503,9 +503,9 @@ static int ch7033_probe(struct i2c_client *client,
 		dev_err(&client->dev, "error reading the model id: %d\n", ret);
 		return ret;
 	}
+
 	if ((val & 0x0f) != 3) {
-		dev_err(&client->dev, "unknown revision %u\n", val);
-		return -ENODEV;
+		dev_warn(&client->dev, "unknown revision %u\n", val);
 	}
 
 	INIT_LIST_HEAD(&priv->bridge.list);
