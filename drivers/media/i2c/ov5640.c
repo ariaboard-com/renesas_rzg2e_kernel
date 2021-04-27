@@ -856,8 +856,8 @@ static int ov5640_read_reg(struct ov5640_dev *sensor, u16 reg, u8 *val)
 
 	ret = i2c_transfer(client->adapter, msg, 2);
 	if (ret < 0) {
-		dev_err(&client->dev, "%s: error: reg=%x\n",
-			__func__, reg);
+		dev_err(&client->dev, "%s: error: reg=%x, err=%d\n",
+			__func__, reg, ret);
 		return ret;
 	}
 

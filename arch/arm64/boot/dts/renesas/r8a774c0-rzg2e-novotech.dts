@@ -120,7 +120,7 @@
 		regulator-boot-on;
 	};
 
-	imx219_vdddo_1v8: 1p8v {
+	ov5640_vdddo_1v8: 1p8v {
 		compatible = "regulator-fixed";
 		regulator-name = "camera_vdddo";
 		regulator-min-microvolt = <1800000>;
@@ -128,7 +128,7 @@
 		regulator-always-on;
 	};
 
-	imx219_vdda_2v8: 2p8v {
+	ov5640_vdda_2v8: 2p8v {
 		compatible = "regulator-fixed";
 		regulator-name = "camera_vdda";
 		regulator-min-microvolt = <2800000>;
@@ -136,11 +136,11 @@
 		regulator-always-on;
 	};
 
-	imx219_vddd_1v2: 1p2v {
+	ov5640_vddd_1v5: 1p5v {
 		compatible = "regulator-fixed";
 		regulator-name = "camera_vddd";
-		regulator-min-microvolt = <1200000>;
-		regulator-max-microvolt = <1200000>;
+		regulator-min-microvolt = <1500000>;
+		regulator-max-microvolt = <1500000>;
 		regulator-always-on;
 	};
 
@@ -541,12 +541,16 @@
 &xhci0 {
 	pinctrl-0 = <&usb30_pins>;
 	pinctrl-names = "default";
+	dr_mode = "host";
 
 	status = "okay";
 };
 
 &usb3_peri0 {
 	companion = <&xhci0>;
+
+	usb-role-switch;
+	role-switch-default-mode = "host";
 
 	status = "okay";
 };
@@ -654,27 +658,25 @@
 		};
 	};
 
-	imx219_csi40: imx219@10 {
-		compatible = "sony,imx219";
-		reg = <0x10>;
+	ov5640_csi40: camera@3c {
+		compatible = "ovti,ov5640";
+		reg = <0x3c>;
 		pinctrl-0 = <&camera_pins>;
 		pinctrl-names = "default";
 		clock-names = "xclk";
 		clocks = <&osc25250_clk>;
 		clock-frequency = <24000000>;
-		VDIG-supply = <&imx219_vdddo_1v8>;
-		VANA-supply = <&imx219_vdda_2v8>;
-		VDDL-supply = <&imx219_vddd_1v2>;
-		reset-gpios = <&gpio5 16 GPIO_ACTIVE_HIGH>;
+		DOVDD-supply = <&ov5640_vdddo_1v8>;
+		AVDD-supply = <&ov5640_vdda_2v8>;
+		DVDD-supply = <&ov5640_vddd_1v5>;
+		reset-gpios = <&gpio5 16 GPIO_ACTIVE_LOW>;
 		virtual-channel = /bits/ 8 <0>;
 
 		port {
-			imx219_csi40_ep: endpoint {
+			ov5640_csi40_ep: endpoint {
 				clock-lanes = <0>;
 				data-lanes = <1 2>;
 				remote-endpoint = <&csi40_in>;
-				/* clock-noncontinuous; */
-				link-frequencies = /bits/ 64 <456000000>;
 			};
 		};
 	};
@@ -766,7 +768,7 @@
 			csi40_in: endpoint {
 				clock-lanes = <0>;
 				data-lanes = <1 2>;
-				remote-endpoint = <&imx219_csi40_ep>;
+				remote-endpoint = <&ov5640_csi40_ep>;
 			};
 		};
 	};
