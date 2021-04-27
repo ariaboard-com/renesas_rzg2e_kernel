@@ -202,6 +202,7 @@ struct ov5640_ctrls {
 	struct v4l2_ctrl *test_pattern;
 	struct v4l2_ctrl *hflip;
 	struct v4l2_ctrl *vflip;
+	struct v4l2_ctrl *pixel_rate;
 };
 
 struct ov5640_dev {
@@ -2428,6 +2429,12 @@ static int ov5640_init_controls(struct ov5640_dev *sensor)
 
 	/* we can use our own mutex for the ctrl lock */
 	hdl->lock = &sensor->lock;
+
+	/* By default, PIXEL_RATE is read only */
+	ctrls->pixel_rate = v4l2_ctrl_new_std(hdl, ops,
+					V4L2_CID_PIXEL_RATE, 0, INT_MAX,
+					1, 55969920);
+
 
 	/* Auto/manual white balance */
 	ctrls->auto_wb = v4l2_ctrl_new_std(hdl, ops,
