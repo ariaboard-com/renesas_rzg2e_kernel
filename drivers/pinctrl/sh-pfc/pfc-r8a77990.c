@@ -3519,12 +3519,17 @@ static const unsigned int usb0_a_mux[] = {
 };
 
 static const unsigned int usb0_b_pins[] = {
+#if 0
 	/* PWEN, OVC */
 	RCAR_GP_PIN(6, 11), RCAR_GP_PIN(6, 12),
+#endif
+	/* PWEN */
+	RCAR_GP_PIN(6, 11),
 };
 
 static const unsigned int usb0_b_mux[] = {
-	USB0_PWEN_B_MARK, USB0_OVC_B_MARK,
+	/* USB0_PWEN_B_MARK, USB0_OVC_B_MARK, */
+	USB0_PWEN_B_MARK,
 };
 
 static const unsigned int usb0_id_pins[] = {
@@ -3538,12 +3543,17 @@ static const unsigned int usb0_id_mux[] = {
 
 /* - USB30 ------------------------------------------------------------------ */
 static const unsigned int usb30_pins[] = {
+#if 0
 	/* PWEN, OVC */
 	RCAR_GP_PIN(6, 17), RCAR_GP_PIN(6, 9),
+#endif
+	/* PWEN */
+	RCAR_GP_PIN(6, 17),
 };
 
 static const unsigned int usb30_mux[] = {
-	USB30_PWEN_MARK, USB30_OVC_MARK,
+	/* USB30_PWEN_MARK, USB30_OVC_MARK, */
+	USB30_PWEN_MARK,
 };
 
 static const unsigned int usb30_id_pins[] = {

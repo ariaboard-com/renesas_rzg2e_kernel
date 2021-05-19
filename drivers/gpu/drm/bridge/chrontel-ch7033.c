@@ -16,6 +16,9 @@
 #include <drm/drm_print.h>
 #include <drm/drm_crtc_helper.h>
 
+#include <sound/asoundef.h>
+#include <sound/hdmi-codec.h>
+
 /* Page 0, Register 0x07 */
 enum {
 	DRI_PD		= BIT(3),
