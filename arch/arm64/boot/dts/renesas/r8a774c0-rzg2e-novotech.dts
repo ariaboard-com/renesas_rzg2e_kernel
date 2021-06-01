@@ -18,6 +18,8 @@
 		serial1 = &hscif2;
 		serial2 = &hscif3;
 		serial3 = &hscif4;
+
+		/* serial4 = &scif1; */
 		spi0 = &msiof0;
 		spi1 = &msiof1;
 		spi2 = &msiof2;
@@ -150,28 +152,44 @@
 		clock-frequency = <24000000>;
 	};
 
-	sound {
+	sound: sound {
 		compatible = "simple-audio-card";
-		simple-audio-card,format = "i2s";
-		simple-audio-card,mclk-fs = <256>;
 
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		simple-audio-card,dai-link@1 {
-			reg = <1>;
+		simple-audio-card,dai-link@0 {
+			reg = <0>;
 			format = "i2s";
-			cpu {
+			mclk-fs = <256>;
+			sndcpu0: cpu@0 {
 				sound-dai = <&rcar_sound 1>;
-				bitclock-master;
-				frame-master;
+				bitclock-master = <&sndcpu0>;
+				frame-master = <&sndcpu0>;
 			};
 
-			codec {
+			codec0: codec@0 {
+				prefix = "rt5616-aif1";
 				sound-dai = <&rt5616>;
 			};
 		};
 
+		simple-audio-card,dai-link@1 {
+			reg = <1>;
+			format = "i2s";
+			mclk-fs = <256>;
+			bitclock-master = <&sndcpu1>;
+			frame-master = <&sndcpu1>;
+
+			sndcpu1: cpu@1 {
+				sound-dai = <&rcar_sound 0>;
+			};
+
+			codec1: codec@1 {
+				prefix = "ch7033";
+				sound-dai = <&ch7033>;
+			};
+		};
 	};
 
 	/* External DU dot clocks */
@@ -281,6 +299,13 @@
 			};
 		};
 	};
+
+        ir_recv: ir-receiver {
+                pinctrl-names = "default";
+                compatible = "gpio-ir-receiver";
+                gpios = <&gpio2 11 GPIO_ACTIVE_LOW>;
+		linux,rc-map-name = "rc-nec-lunatv";
+        };
 };
 
 &audio_clk_a {
@@ -301,6 +326,12 @@
 };
 
 &pfc {
+	
+	scif1_pins: scif1 {
+		groups = "scif1_data";
+		function = "scif1";
+	};
+
 	scif2_pins: scif2 {
 		groups = "scif2_data_a";
 		function = "scif2";
@@ -431,6 +462,15 @@
 	status = "okay";
 };
 
+/*
+&scif1 {
+	pinctrl-0 = <&scif1_pins>;
+	pinctrl-names = "default";
+
+	status = "okay";
+};
+*/
+
 &hscif3 {
 	pinctrl-0 = <&hscif3_pins>;
 	pinctrl-names = "default";
@@ -484,18 +524,11 @@
 	keep-power-in-suspend;	
 	no-1-8-v;
 
-        bcmdhd: bcmdhd@0 {
-                compatible = "android,bcmdhd_wlan";
-                status = "okay";
-        };
-
-/*
 	brcmf: wifi@0 {
 		reg = <0>;
 		compatible = "brcm,bcm4329-fmac";
                 status = "okay";
 	};
-*/
 };
 
 &pwm5 {
@@ -544,7 +577,6 @@
 	pinctrl-0 = <&sound_pins &sound_clk_pins>;
 	pinctrl-names = "default";
 
-	/* Single DAI */
 	#sound-dai-cells = <1>;
 
 	/* audio_clkout0/1/2/3 */
@@ -555,12 +587,12 @@
 
 	rcar_sound,dai {
 		dai0 {
-			playback = <&ssi0 &src0 &dvc0>;
+			playback = <&ssi0>;
 		};
 
 		dai1 {
-			playback = <&ssi4 &src4 &dvc1>;
-			capture  = <&ssi3 &src3 &dvc1>;
+			playback = <&ssi4 &src4 &dvc0>;
+			capture  = <&ssi3 &src3 &dvc0>;
 		};
 	};
 };
@@ -685,6 +717,10 @@
 	ch7033: ch7033@76 {
 		compatible = "chrontel,ch7033";
 		reg = <0x76>;
+
+		#sound-dai-cells = <0>;
+		audio-ports = <2 0x03>;
+		clocks = <&rcar_sound 1>;
 
 		ports {
 			#address-cells = <1>;

@@ -73,6 +73,7 @@ obj-$(CONFIG_RC_MAP) += rc-adstech-dvb-t-pci.o \
 			rc-msi-tvanywhere-plus.o \
 			rc-nebula.o \
 			rc-nec-terratec-cinergy-xs.o \
+			rc-nec-lunatv.o \
 			rc-norwood.o \
 			rc-npgtech.o \
 			rc-pctv-sedna.o \

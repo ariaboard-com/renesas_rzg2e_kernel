@@ -23,6 +23,7 @@
 enum {
 	DRI_PD		= BIT(3),
 	IO_PD		= BIT(5),
+	I2S_PD		= BIT(6),
 };
 
 /* Page 0, Register 0x08 */
@@ -206,6 +207,9 @@ struct ch7033_priv {
 	struct drm_connector connector;
 
 	struct i2c_adapter *ddc;
+
+	struct platform_device *audio_pdev;
+	int clock;
 };
 
 #define conn_to_ch7033_priv(x) \
@@ -298,6 +302,7 @@ static void ch7033_bridge_mode_set(struct drm_bridge *bridge,
 	int hsynclen = mode->hsync_end - mode->hsync_start;
 	int vbporch = mode->vsync_start - mode->vdisplay;
 	int vsynclen = mode->vsync_end - mode->vsync_start;
+	int uclk, ret, val;
 
 	/*
 	 * Page 4
@@ -315,7 +320,7 @@ static void ch7033_bridge_mode_set(struct drm_bridge *bridge,
 	regmap_write(priv->regmap, 0x03, 0x00);
 
 	/* Bring up parts we need from the power down. */
-	regmap_update_bits(priv->regmap, 0x07, DRI_PD | IO_PD, 0);
+	regmap_update_bits(priv->regmap, 0x07, I2S_PD | DRI_PD | IO_PD, 0);
 	regmap_update_bits(priv->regmap, 0x08, DRI_PDDRI | PDDAC | PANEN, 0);
 	regmap_update_bits(priv->regmap, 0x09, DPD | GCKOFF |
 					       HDMI_PD | VGA_PD, 0);
@@ -454,6 +459,31 @@ static void ch7033_bridge_mode_set(struct drm_bridge *bridge,
 	regmap_write(priv->regmap, 0x10, mode->clock >> 16);
 	regmap_write(priv->regmap, 0x11, mode->clock >> 8);
 	regmap_write(priv->regmap, 0x12, mode->clock);
+
+	priv->clock = mode->clock;
+	uclk = mode->clock / 10;
+
+	/*
+	 * Page 0
+	 */
+	regmap_write(priv->regmap, 0x03, 0x00);
+
+	/* Audio Format: I2S, STD, 16bit */
+	regmap_write(priv->regmap, 0x1E, 0xC0); 
+
+	/*
+	 * Page 1
+	 */
+	regmap_write(priv->regmap, 0x03, 0x01);
+
+	regmap_write(priv->regmap, 0x28, uclk >> 8);
+	regmap_write(priv->regmap, 0x29, uclk);
+
+	ret = regmap_read(priv->regmap, 0x4F, &val);
+	if(ret >= 0) {
+		val |= 0xC0;
+		regmap_write(priv->regmap, 0x4F, val);
+	};	
 }
 
 static const struct drm_bridge_funcs ch7033_bridge_funcs = {
@@ -469,6 +499,81 @@ static const struct regmap_config ch7033_regmap_config = {
 	.val_bits = 8,
 	.max_register = 0x7f,
 };
+
+static int ch7035_audio_hw_params(struct device *dev, void *data,
+				   struct hdmi_codec_daifmt *daifmt,
+				   struct hdmi_codec_params *params)
+{
+	struct ch7033_priv *priv = dev_get_drvdata(dev);
+	int bits = 0, muldata = 0, val, ret;
+
+	switch (params->sample_width) {
+	case 16:
+		bits = 0;
+		muldata = 3;
+		break;
+	case 20:
+		bits = 1;
+		muldata = 2;
+		break;
+	case 24:
+		bits = 2;
+		muldata = 0;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	/*
+	 * Page 0
+	 */
+	regmap_write(priv->regmap, 0x03, 0x00);
+	ret = regmap_read(priv->regmap, 0x1E, &val);
+	if(ret < 0)
+		return -EINVAL;
+	val &= 0xF3;
+	val |= bits << 2;
+	regmap_write(priv->regmap, 0x1E, val); 
+
+	/*
+	 * Page 1
+	 */
+	regmap_write(priv->regmap, 0x03, 0x01);
+	ret = regmap_read(priv->regmap, 0x4F, &val);
+	if(ret < 0)
+		return -EINVAL;
+	val &= 0x3F;
+	val |= muldata << 6;
+	regmap_write(priv->regmap, 0x4F, val); 
+
+	return 0;
+}
+
+static void ch7035_audio_shutdown(struct device *dev, void *data)
+{
+	
+}
+
+static const struct hdmi_codec_ops audio_codec_ops = {
+	.hw_params = ch7035_audio_hw_params,
+	.audio_shutdown = ch7035_audio_shutdown,
+};
+
+static int ch7035_audio_codec_init(struct ch7033_priv *priv,
+				    struct device *dev)
+{
+	struct hdmi_codec_pdata codec_data = {
+		.ops = &audio_codec_ops,
+		.max_i2s_channels = 2,
+		.i2s = 1,
+	};
+
+	priv->audio_pdev = platform_device_register_data(
+		dev, HDMI_CODEC_DRV_NAME, PLATFORM_DEVID_AUTO,
+		&codec_data, sizeof(codec_data));
+
+	return PTR_ERR_OR_ZERO(priv->audio_pdev);
+}
 
 static int ch7033_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
@@ -516,6 +621,8 @@ static int ch7033_probe(struct i2c_client *client,
 	priv->bridge.of_node = dev->of_node;
 	drm_bridge_add(&priv->bridge);
 
+	ch7035_audio_codec_init(priv, dev);
+
 	dev_info(dev, "Chrontel CH7033 Video Encoder\n");
 
 	return 0;
@@ -525,6 +632,11 @@ static int ch7033_remove(struct i2c_client *client)
 {
 	struct device *dev = &client->dev;
 	struct ch7033_priv *priv = dev_get_drvdata(dev);
+
+	if (priv->audio_pdev) {
+		platform_device_unregister(priv->audio_pdev);
+		priv->audio_pdev = NULL;
+	}
 
 	drm_bridge_remove(&priv->bridge);
 
