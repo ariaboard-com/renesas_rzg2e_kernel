@@ -310,9 +310,11 @@ static void ch7033_bridge_mode_set(struct drm_bridge *bridge,
 	regmap_write(priv->regmap, 0x03, 0x04);
 
 	/* Turn everything off to set all the registers to their defaults. */
-	regmap_write(priv->regmap, 0x52, 0x00);
+	regmap_write(priv->regmap, 0x52, 0x00);	
 	/* Bring I/O block up. */
-	regmap_write(priv->regmap, 0x52, RESETIB);
+	usleep_range(10000, 20000);
+	regmap_write(priv->regmap, 0x52,
+		PGM_ARSTB | MCU_ARSTB | MCU_RETB | RESETIB | RESETDB);
 
 	/*
 	 * Page 0
@@ -483,7 +485,7 @@ static void ch7033_bridge_mode_set(struct drm_bridge *bridge,
 	if(ret >= 0) {
 		val |= 0xC0;
 		regmap_write(priv->regmap, 0x4F, val);
-	};	
+	};
 }
 
 static const struct drm_bridge_funcs ch7033_bridge_funcs = {
