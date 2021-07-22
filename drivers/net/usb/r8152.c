@@ -4168,6 +4168,10 @@ static void r8153_init(struct r8152 *tp)
 		tp->coalesce = COALESCE_SLOW;
 		break;
 	}
+
+	ocp_data = ocp_read_word(tp, MCU_TYPE_PLA, PLA_LEDSEL);
+	ocp_data = 0xF111;
+	ocp_write_word(tp, MCU_TYPE_PLA, PLA_LEDSEL, ocp_data);
 }
 
 static void r8153b_init(struct r8152 *tp)
@@ -4229,6 +4233,10 @@ static void r8153b_init(struct r8152 *tp)
 	ocp_write_word(tp, MCU_TYPE_USB, USB_USB_CTRL, ocp_data);
 
 	rtl_tally_reset(tp);
+
+	ocp_data = ocp_read_word(tp, MCU_TYPE_PLA, PLA_LEDSEL);
+	ocp_data = 0xF111;
+	ocp_write_word(tp, MCU_TYPE_PLA, PLA_LEDSEL, ocp_data);
 
 	tp->coalesce = 15000;	/* 15 us */
 }
